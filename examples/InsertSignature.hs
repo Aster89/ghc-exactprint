@@ -27,7 +27,7 @@ addSignature funid tsig (GHC.L l m) = do
   Right sig <- withDynFlags libdir (\d -> parseDecl d "template" tsig)
 
   let (before, (bind: after)) = break findFunBind (GHC.hsmodDecls m)
-      finalMod = m { GHC.hsmodDecls = before ++ insertAtStart bind sig ++ after }
+      finalMod = m { GHC.hsmodDecls = before ++ insertAtStart bind sig:after }
 
   return (GHC.L l finalMod)
   where
