@@ -21,6 +21,7 @@ import Data.Generics as SYB
 
 import System.FilePath
 import Data.List
+import Data.List.NonEmpty (NonEmpty ((:|)))
 
 import Test.Common
 
@@ -62,6 +63,7 @@ transformLowLevelTests libdir = [
   , mkTestModChange libdir changeLocalDecls2 "LocalDecls2.hs"
   , mkTestModChange libdir changeWhereIn3a   "WhereIn3a.hs"
   , mkTestModChange libdir changeWhereIn3b   "WhereIn3b.hs"
+  , mkTestModChange libdir changeInstanceGraft "InstanceGraft.hs"
 --  , mkTestModChange changeCifToCase  "C.hs"          "C"
   ]
 
@@ -99,6 +101,26 @@ changeWhereIn3a _libdir (L l p) = do
   debugM $ "changeWhereIn3a:de1:" ++ showAst de1
   let p2 = p { hsmodDecls = decls}
   return (L l p2)
+
+-- ---------------------------------------------------------------------
+
+-- | A delta-anchored expression grafted into a class or instance method
+-- must indent its continuation lines relative to the method declarations
+-- layout column.
+changeInstanceGraft :: Changer
+changeInstanceGraft _libdir top = do
+  let lp = makeDeltaAst top
+      grab :: HsBind GhcPs -> [LHsExpr GhcPs]
+      grab FunBind{ fun_id = L _ n
+                  , fun_matches = MG{mg_alts = L _ [L _ Match{m_grhss = GRHSs _ (L _ (GRHS _ _ e) :| []) _}]}}
+        | occNameString (rdrNameOcc n) == "combine" = [e]
+      grab _ = []
+      [body] = everything (++) ([] `mkQ` grab) lp
+      replace :: LHsExpr GhcPs -> LHsExpr GhcPs
+      replace (L _ (HsVar _ (L _ n)))
+        | occNameString (rdrNameOcc n) == "todo" = setEntryDP body (SameLine 1)
+      replace x = x
+  return (everywhere (mkT replace) lp)
 
 -- ---------------------------------------------------------------------
 
