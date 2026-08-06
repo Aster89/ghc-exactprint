@@ -2883,7 +2883,7 @@ instance ExactPrint (HsExpr GhcPs) where
              LamSingle -> return an0
              LamCase  -> markLensFun an0 lepl_case (\ml -> mapM (\l -> printStringAtAA l "case") ml)
              LamCases -> markLensFun an0 lepl_case (\ml -> mapM (\l -> printStringAtAA l "cases") ml)
-    mg' <- markAnnotated mg
+    mg' <- setLayoutBoth $ markAnnotated mg
     return (HsLam an1 lam_variant mg')
 
   exact (HsApp an e1 e2) = do
