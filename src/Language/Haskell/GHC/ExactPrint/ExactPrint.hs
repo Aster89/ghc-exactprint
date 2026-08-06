@@ -2217,7 +2217,7 @@ instance ExactPrint (ClsInstDecl GhcPs) where
           (mbWarn', i', w', mbOverlap', inst_ty') <- top_matter
           oc' <- markEpToken oc
           semis' <- mapM markEpToken semis
-          (sortKey', ds) <- withSortKey sortKey
+          (sortKey', ds) <- setLayoutBoth $ withSortKey sortKey
                                [(ClsAtTag, prepareListAnnotationA ats),
                                 (ClsAtdTag, prepareListAnnotationF adts),
                                 (ClsMethodTag, prepareListAnnotationA binds),
@@ -3606,7 +3606,7 @@ instance ExactPrint (TyClDecl GhcPs) where
           (c', w', vb', fds', lclas', tyvars',context') <- top_matter
           oc' <- markEpToken oc
           semis' <- mapM markEpToken semis
-          (sortKey', ds) <- withSortKey sortKey
+          (sortKey', ds) <- setLayoutBoth $ withSortKey sortKey
                                [(ClsSigTag, prepareListAnnotationA sigs),
                                 (ClsMethodTag, prepareListAnnotationA methods),
                                 (ClsAtTag, prepareListAnnotationA ats),
