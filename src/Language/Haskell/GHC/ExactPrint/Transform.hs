@@ -1198,19 +1198,19 @@ modifyDeclsT action t = do
 -- | Isomorphic to @'Maybe' 'Matches'@, this type encodes whether a @case@-like
 -- expression has braces; if it does, the type also records whether there are
 -- pre-existing matches.
-data MatchLayout = Braced Matches | NonBraced
+data MatchLayout = NonBraced | Braced Matches
 
 -- | Isomorphic to @Maybe Int@, this type encodes whether there are
 -- pre-existing matches in a @case@-like expression **with braces**, and - if
--- there are -  what's the indentation of the first of them.
+-- there are - what's the indentation of the first of them.
 --
 -- Note: it could also model the same concept for the non-braced case, but that's
 -- not needed (see also 'MatchLayout').
 data Matches = NoMatches | SomeMatches !Int
 
--- | Given a 'MatchGroup' and a list of 'LMatch'es, this function inserts the
--- latter matches in the former group, trying to honor the existing layout,
--- returning the new 'MatchGroup' in the 'Maybe' monad to account for failure.
+-- | Given a 'MatchGroup' and a 'NonEmpty' list of 'LMatch'es, this function
+-- inserts the latter matches in the former group, honor the existing
+-- 'MatchLayout', returning the new 'MatchGroup'.
 --
 -- For the meaning of the first argument of type @Maybe Int@, see
 -- 'getIndentation'.
@@ -1257,11 +1257,11 @@ data Matches = NoMatches | SomeMatches !Int
 --
 --
 -- Refer to test cases to see practical examples.
-appendMissingPats :: MatchLayout
-                  -> MatchGroup GhcPs (LHsExpr GhcPs)
+appendMissingPats :: MatchGroup GhcPs (LHsExpr GhcPs)
                   -> NonEmpty (LMatch GhcPs (LHsExpr GhcPs))
+                  -> MatchLayout
                   -> MatchGroup GhcPs (LHsExpr GhcPs)
-appendMissingPats matchLayout mg@(MG { mg_alts = L altsLoc existingMatches }) missingMatches
+appendMissingPats mg@(MG { mg_alts = L altsLoc existingMatches }) missingMatches matchLayout
   = let -- Choose how many patterns per line we are emitting:
         chunkSize = case existingMatches of
                  [] -> 1 -- trivially 1 if there's no existing matches,
@@ -1328,10 +1328,10 @@ appendMissingPats matchLayout mg@(MG { mg_alts = L altsLoc existingMatches }) mi
 
     in mg { mg_alts = L altsLoc (existingMatchesEP <> missingMatchesEP) }
 
--- | Accepts a @NonEmpty (LocatedAn AnnListItem a)@ and chunkifies it by the given 'size',
+-- | Accepts a @NonEmpty (LocatedA a)@ and chunkifies it by the given 'size',
 -- putting all matches of each chunk on the same line, leaving 1 space in between, and
 -- keeping the code valid by adding semicolons to all but the last match of each chunk.
-prettyChunksOf :: Int -> NonEmpty (LocatedAn AnnListItem a) -> NonEmpty (NonEmpty (LocatedAn AnnListItem a))
+prettyChunksOf :: Int -> NonEmpty (LocatedA a) -> NonEmpty (NonEmpty (LocatedA a))
 prettyChunksOf size allMatches = do
   -- For each chunk
   chunk <- chunksOf1 size allMatches
@@ -1348,9 +1348,6 @@ prettyChunksOf size allMatches = do
     toZipList = ZipList . NE.toList
     fromZipList = NE.fromList . getZipList
 
--- | TODO: We could could make these values customizable via HLS plugin
--- settings.
---
 -- Other things that we could store here are:
 --
 --    - the maximum number of alternatives on one line
@@ -1409,7 +1406,7 @@ putOnNewLine :: LocatedAn t a -> LocatedAn t a
 putOnNewLine = setDPLine 1
 
 -- | Add semicolon, unless one is already present.
-addSemiCol :: LocatedAn AnnListItem a -> LocatedAn AnnListItem a
+addSemiCol :: LocatedA a -> LocatedA a
 addSemiCol (L l@(EpAnn _ ls _) e)
   | none isSemiCol (lann_trailing ls)
   = L (addTrailingAnnToA (AddSemiAnn (EpTok d0)) emptyComments l) e
