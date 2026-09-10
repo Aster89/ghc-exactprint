@@ -7,21 +7,34 @@ module Main where
 
 -- import Language.Haskell.GHC.ExactPrint.Utils ( showGhc )
 import qualified GHC.Paths
-import Control.Monad
+import Control.Monad ( when )
 import System.Directory
-import System.FilePath
-import System.IO
-import System.Exit
+    ( getCurrentDirectory, getDirectoryContents, setCurrentDirectory )
+import System.FilePath ( (</>) )
+import System.IO ( stderr, stdout )
+import System.Exit ( exitFailure )
 
-import Data.List
+import Data.List ( isSuffixOf, sort )
 import qualified Data.Set as Set
-import System.IO.Silently
+import System.IO.Silently ( hSilence )
 
 import Test.Common
-import Test.NoAnnotations
+    ( mkParsingTest,
+      roundTripTest,
+      roundTripTestBC,
+      roundTripTestMD,
+      testList,
+      testPrefix,
+      LibDir )
+import Test.NoAnnotations ( mkPrettyRoundtrip )
 import Test.Transform
+    ( transformTests)
 
 import Test.HUnit
+    ( Test(TestList, TestLabel),
+      putTextToHandle,
+      runTestText,
+      Counts(failures, errors) )
 
 
 -- import Debug.Trace
@@ -60,11 +73,6 @@ main = hSilence [stderr] $ do
   if errors cnts > 0 || failures cnts > 0
      then exitFailure
      else return () -- exitSuccess
-
-transform :: IO (Counts,Int)
-transform = do
-  let libdir = GHC.Paths.libdir
-  runTestText (putTextToHandle stdout True) (transformTestsTT libdir)
 
 -- ---------------------------------------------------------------------
 
@@ -144,24 +152,10 @@ mkTests = do
                    ,
                      (transformTests libdir)
                    ,
-                      (failingTests libdir)
-                   ,
                      roundTripBalanceCommentsTests
                    ,
                      roundTripMakeDeltaTests
                     ]
-
-failingTests :: LibDir -> Test
-failingTests libdir = testList "Failing tests"
-  [
-  -- Tests requiring future GHC modifications
-
-  -- We do not capture EOF location very well any more
-    mkTestModBad libdir "T10970a.hs"
-  -- Injecting CPP comments adjacent to existing ones is a problem
-  , mkTestModBad libdir "CppComment.hs"
-  ]
-
 
 mkParserTest :: LibDir -> FilePath -> FilePath -> Test
 mkParserTest libdir dir fp = mkParsingTest (roundTripTest libdir) dir fp
